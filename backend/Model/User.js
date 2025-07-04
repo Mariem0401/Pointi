@@ -1,109 +1,119 @@
-const mongoose  = require("mongoose");
+const mongoose = require("mongoose");
 const validator = require("validator");
-const bcrypt    = require("bcryptjs");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
-// Schéma de l'utilisateur
 const userSchema = new mongoose.Schema({
+  // === Informations de base ===
   name: {
     type: String,
-    required: [true, "Name is required"],
-    unique: true,
+    required: [true, "Le nom est obligatoire"],
     trim: true,
+    index: true
   },
   email: {
     type: String,
-    required: [true, "Email is required"],
+    required: [true, "L'email est obligatoire"],
     unique: true,
     lowercase: true,
-    validate: [validator.isEmail, "Invalid email"],
+    validate: [validator.isEmail, "Email invalide"],
+    index: true
   },
   password: {
     type: String,
     required: [true, "Le mot de passe est obligatoire"],
-    minlength: 6
+    minlength: 6,
+    select: false
   },
   role: {
     type: String,
     enum: ["admin", "rh", "employe"],
     default: "employe",
-     required: [true, "role is required"],
-  },
-
-  // Dans models/User.js
-
-
-  // 🔗 Références vers Département et Poste
-/*  departement: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Departement",
     required: true
   },
-  poste: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Poste",
-    required: true
-  },*/
 
-  // RH
-  salaireMensuel: {
-    type: Number,
-    default: 0
-  },
-  contratUrl: {
-    type: String,
-    default: ""
-  },
-  peutTravaillerWeekend: {
-    type: Boolean,
-    default: false
-  },
-  peutTravaillerFeries: {
-    type: Boolean,
-    default: false
-  },
+  
+  salaireMensuel: Number,
+  contratUrl: String,
+  peutTravaillerWeekend: { type: Boolean, default: false },
+  peutTravaillerFeries: { type: Boolean, default: false },
 
-  // Pour les QR / PIN
-  dernierCodePin: {
+
+  pinCode: {
     type: String,
-    default: null
+    index: true,
+    expires: 86400 
   },
-  dernierQrCodeUrl: {
-    type: String,
-    default: null
+  qrCodeImage: {
+    type: Buffer,
+    select: false ,
+    expires : 86400
   },
-  dateDernierCode: {
-    type: Date,
-    default: null
-  }
+  lastCodeSentAt: Date,
+
+  // === Sécurité ===
+  passwordChangedAt: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date
 
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Hash du mot de passe avant save
-userSchema.pre("save", async function (next) {
+// === Middlewares ===
+userSchema.pre("save", async function(next) {
   if (!this.isModified("password")) return next();
-  this.password        = await bcrypt.hash(this.password, 12);
-  this.confirmPassword = undefined;
+  
+  this.password = await bcrypt.hash(this.password, 12);
+  this.passwordChangedAt = Date.now() - 1000;
   next();
 });
 
-userSchema.methods.verifPass = async function (entered, hashed) {
-  return bcrypt.compare(entered, hashed);
+// === Méthodes améliorées ===
+userSchema.methods = {
+  comparePassword: async function(candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+  },
+
+  generateDailyCodes: async function() {
+    const pinCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const qrData = JSON.stringify({
+      userId: this._id,
+      pinCode,
+      expiresAt: new Date(Date.now() + 86400000)
+    });
+
+    this.pinCode = pinCode;
+    this.lastCodeSentAt = new Date();
+    await this.save();
+
+    return { 
+      pinCode,
+      qrData // À convertir en image dans le service d'email
+    };
+  },
+
+  changedPasswordAfter: function(JWTTimestamp) {
+    if (!this.passwordChangedAt) return false;
+    return JWTTimestamp < parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+  }
 };
-userSchema.methods.changedPasswordTime = function (JWTiat) {
-  return JWTiat > parseInt(this.update_pass_date.getTime() / 1000);
-};
-userSchema.methods.validTokenDate = function (JWTDate) {
-  const dataPass = parseInt(this.update_pass_date.getTime() / 1000);
-  return JWTDate < dataPass;
-};
-userSchema.virtual("attendances", {
-  ref: "Attendance",
-  localField: "_id",
-  foreignField: "userId"
+
+// === Indexes ===
+
+userSchema.index({ lastCodeSentAt: 1 });
+
+// === Virtuals ===
+userSchema.virtual('attendances', {
+  ref: 'Attendance',
+  localField: '_id',
+  foreignField: 'userId',
+  options: { 
+    sort: { date: -1 },
+    match: { status: { $ne: 'holiday' } }
+  }
 });
 
-// Export du modèle
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);
