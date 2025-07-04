@@ -3,97 +3,72 @@ const User = require('../Model/User');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 
-// Fonction utilitaire pour calculer le statut
+// Fonction pour calculer le statut
 function calculateStatus() {
   const hour = new Date().getHours();
   return hour >= 8 ? 'late' : 'on-time';
 }
 
-// Fonction utilitaire pour mettre à jour les codes
-async function updateUserCodes(user) {
-  try {
-    const newPin = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const qrData = JSON.stringify({
-      userId: user._id,
-      pin: newPin,
-      expires: Date.now() + 86400000 // 24h
-    });
-
-    user.pinCode = newPin;
-    user.qrCode = await QRCode.toDataURL(qrData);
-    await user.save();
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour des codes :', error);
-    throw error;
-  }
-}
-
 exports.handleCheckIn = async (req, res) => {
   try {
-    const { qrCodeData, pinCode } = req.body;
-    const userId = req.user._id;
+    const { pinCode, qrCodeData } = req.body;
 
-    // Validation des données d'entrée
-    if (!qrCodeData && !pinCode) {
-      return res.status(400).json({
-        success: false,
-        error: "QR code ou PIN code requis"
-      });
-    }
+    // 1. Trouver l'utilisateur par son code
+    const user = await User.findOne({
+      $or: [
+        { pinCode: pinCode || null },
+        { qrCode: qrCodeData || null }
+      ]
+    });
 
-    // Recherche de l'utilisateur avec vérification du code
-    const query = { _id: userId };
-    if (qrCodeData) query.qrCode = qrCodeData;
-    if (pinCode) query.pinCode = pinCode;
-
-    const user = await User.findOne(query);
     if (!user) {
-      return res.status(401).json({ 
+      return res.status(400).json({ 
         success: false,
         error: "Code invalide ou expiré" 
       });
     }
 
-    // Vérification du pointage existant
+    // 2. Vérifier si déjà pointé aujourd'hui
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const existingAttendance = await Attendance.findOne({
-      userId,
+    const existing = await Attendance.findOne({
+      userId: user._id,
       date: { $gte: todayStart }
     });
 
-    if (existingAttendance) {
-      const message = existingAttendance.checkOut 
-        ? "Pointage complet pour aujourd'hui"
-        : "Vous avez déjà pointé ce matin";
+    if (existing) {
       return res.status(400).json({
         success: false,
-        error: message
+        error: existing.checkOut 
+          ? "Pointage complet pour aujourd'hui"
+          : "Vous avez déjà pointé ce matin"
       });
     }
 
-    // Création du pointage
-    const newAttendance = await Attendance.create({
-      userId,
+    // 3. Enregistrer le pointage
+    const attendance = await Attendance.create({
+      userId: user._id,
       date: new Date(),
       checkIn: new Date(),
       status: calculateStatus()
     });
 
-    // Mise à jour des codes de sécurité
-    await updateUserCodes(user);
+    // 4. Générer un nouveau code (optionnel)
+    const newPin = crypto.randomBytes(3).toString('hex').toUpperCase();
+    user.pinCode = newPin;
+    await user.save();
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      data: newAttendance
+      data: attendance
     });
 
   } catch (error) {
-    console.error('Erreur handleCheckIn:', error);
-    return res.status(500).json({
+    console.error(error);
+    res.status(500).json({
       success: false,
-      error: "Erreur serveur lors du pointage"
+      error: "Erreur serveur"
     });
   }
 };
