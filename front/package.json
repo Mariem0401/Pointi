@@ -4,10 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-<<<<<<< HEAD
-=======
+
     "start": "vite",
->>>>>>> 94285566b3d6ce2820672a107651bcd35e16e8ca
+
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
