@@ -10,11 +10,18 @@ server.use(express.json());
 server.listen(port, () => {
   console.log(`App is running on port ${port}...`);
 });
-
+const departementRoutes = require("./Routes/departementRoutes");
 const userRoutes = require('./Routes/UserRoutes');
-const attendanceRoutes =require('./Routes/attendanceRoutes')
+const attendanceRoutes =require('./Routes/attendanceRoutes');
+const contractRoutes=require('./Routes/contractRoutes');
+const leave=require('./Routes/leaveRoutes');
+
+
 server.use('/users', userRoutes);
 server.use('/attendance', attendanceRoutes);
+server.use('/departement',departementRoutes);
+server.use('/contract',contractRoutes);
+server.use('/leave',leave);
 
 mongoose
   .connect(databaseUrl)
@@ -36,6 +43,6 @@ async function testEmailSending() {
 }
 
 // Call the function immediately
-testEmailSending();
-
+//testEmailSending();
 require('./jobs/dailyCodeJob').start();
+require('./jobs/cleanCodeLogsJob').start();

@@ -32,13 +32,13 @@ const userSchema = new mongoose.Schema({
     required: true
   },
 
-  
+  // === Données supplémentaires ===
   salaireMensuel: Number,
   contratUrl: String,
   peutTravaillerWeekend: { type: Boolean, default: false },
   peutTravaillerFeries: { type: Boolean, default: false },
 
-
+  // === Codes QR & Pointage ===
   pinCode: {
     type: String,
     index: true,
@@ -46,8 +46,8 @@ const userSchema = new mongoose.Schema({
   },
   qrCodeImage: {
     type: Buffer,
-    select: false ,
-    expires : 86400
+    select: false,
+    expires: 86400
   },
   lastCodeSentAt: Date,
 
@@ -62,21 +62,27 @@ const userSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// === Middlewares ===
+
+// === Middleware: hash mot de passe ===
 userSchema.pre("save", async function(next) {
   if (!this.isModified("password")) return next();
-  
+
   this.password = await bcrypt.hash(this.password, 12);
   this.passwordChangedAt = Date.now() - 1000;
+  this.confirmPassword = undefined;
   next();
 });
 
-// === Méthodes améliorées ===
+
+// === Méthodes ===
 userSchema.methods = {
+
+  // Vérifie si le mot de passe entré est correct
   comparePassword: async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
   },
 
+  // Génère un pinCode + QR Code pour la journée
   generateDailyCodes: async function() {
     const pinCode = crypto.randomBytes(4).toString('hex').toUpperCase();
     const qrData = JSON.stringify({
@@ -89,23 +95,24 @@ userSchema.methods = {
     this.lastCodeSentAt = new Date();
     await this.save();
 
-    return { 
-      pinCode,
-      qrData // À convertir en image dans le service d'email
-    };
+    return { pinCode, qrData };
   },
 
+  // Vérifie si le mot de passe a été changé après l'émission du token
   changedPasswordAfter: function(JWTTimestamp) {
     if (!this.passwordChangedAt) return false;
     return JWTTimestamp < parseInt(this.passwordChangedAt.getTime() / 1000, 10);
   }
 };
 
-// === Indexes ===
 
+// === Indexes ===
 userSchema.index({ lastCodeSentAt: 1 });
 
+
 // === Virtuals ===
+
+// Lié aux pointages
 userSchema.virtual('attendances', {
   ref: 'Attendance',
   localField: '_id',
@@ -116,4 +123,14 @@ userSchema.virtual('attendances', {
   }
 });
 
-module.exports = mongoose.model("User", userSchema);
+// Lié aux contrats
+userSchema.virtual('contracts', {
+  ref: 'Contract',
+  localField: '_id',
+  foreignField: 'employee'
+});
+
+
+// === Modèle ===
+const User = mongoose.model("User", userSchema);
+module.exports = User;

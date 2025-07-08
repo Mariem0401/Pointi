@@ -165,3 +165,74 @@ exports.getUserProfile = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
+
+
+exports.getUserWithContracts = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).populate('contracts');
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: user
+    });
+
+  } catch (err) {
+    console.error('Erreur lors de la récupération de l\'utilisateur avec contrats :', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erreur serveur'
+    });
+  }
+};
+
+exports.addEmploye = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Nom et email sont obligatoires'
+      });
+    }
+
+    // Mot de passe simple généré (ex: employe2025 + 3 chiffres aléatoires)
+    const randomPassword = 'employe' + Math.floor(100 + Math.random() * 900);
+
+    const newUser = await User.create({
+      name,
+      email,
+      password: randomPassword,
+      role: 'employe'
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Employé ajouté avec succès',
+      data: {
+        employe: {
+          id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role
+        },
+        motDePasseInitial: randomPassword
+      }
+    });
+  } catch (err) {
+    console.error('Erreur création employé:', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erreur serveur lors de la création de l\'employé'
+    });
+  }
+};

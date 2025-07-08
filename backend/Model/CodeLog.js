@@ -10,7 +10,7 @@ const codeLogSchema = new mongoose.Schema({
   sentAt: { type: Date, default: Date.now },
   status: { 
     type: String, 
-    enum: ['pending', 'sent', 'failed'],
+    enum: ['pending', 'sent', 'failed','used'],
     default: 'pending' 
   }
 }, { timestamps: true });
