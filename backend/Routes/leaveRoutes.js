@@ -2,8 +2,9 @@ const express = require("express");
 const router = express.Router();
 const leaveController = require("../Controller/leaveController");
 const { protectionMW, howCanDo } = require("../Controller/authController");
+const {upload}=require("../utils/cloudinary")
 // Employee routes
-router.post('/', protectionMW, leaveController.createLeaveRequest);
+router.post('/', protectionMW,   upload.single("justificatif") ,leaveController.createLeaveRequest);
 router.get('/my-leaves', protectionMW, leaveController.getMyLeaves);
 
 // RH/Admin routes

@@ -2,94 +2,115 @@ const Attendance = require('../Model/Attendance');
 const User = require('../Model/User');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const moment = require('moment-timezone');
+const TIMEZONE = 'Africa/Tunis';
+const LeaveRequest = require("../Model/leaveRequestModel");
+
+// Fonction de validation des codes
+function validateCodes(pinCode, qrCodeData) {
+  if (!pinCode && !qrCodeData) {
+    return { valid: false, error: "Veuillez fournir un code PIN ou scanner le QR Code." };
+  }
+  
+  if (pinCode && !/^[A-Z0-9]{6}$/.test(pinCode)) {
+    return { valid: false, error: "Format de code PIN invalide (6 caractères alphanumériques)." };
+  }
+  
+  return { valid: true };
+}
 
 // Fonction pour calculer le statut
 function calculateStatus() {
-  const hour = new Date().getHours();
-  // Assuming 8 AM is the on-time cutoff in Tunis, Tunisia (UTC+1)
+  const hour = moment().tz(TIMEZONE).hours();
   return hour >= 8 ? 'late' : 'on-time';
 }
 
+async function checkLeaveStatus(userId) {
+  const today = moment().tz(TIMEZONE).startOf('day');
+  
+  const leave = await LeaveRequest.findOne({
+    employee: userId,
+    status: "acceptée",
+    startDate: { $lte: today.toDate() },
+    endDate: { $gte: today.toDate() }
+  });
+  
+  return {
+    onLeave: !!leave,
+    leaveData: leave
+  };
+}
+
+// ... le reste de votre code existant ...
 exports.handleCheckIn = async (req, res) => {
   try {
     const { pinCode, qrCodeData } = req.body;
 
-    // Input validation: Ensure at least one code is provided
-    if (!pinCode && !qrCodeData) {
+    // Validation des entrées
+    const validation = validateCodes(pinCode, qrCodeData);
+    if (!validation.valid) {
       return res.status(400).json({
         success: false,
-        error: "Veuillez fournir un code PIN ou scanner le QR Code."
+        error: validation.error
       });
     }
 
-    let user;
-    if (pinCode) {
-      // Find user by current pinCode. Ensure the pinCode field is exactly matched.
-      user = await User.findOne({ pinCode: pinCode.toUpperCase() }); // Convert to uppercase for consistent comparison
-    } else if (qrCodeData) {
-      // Find user by current qrCodeData.
-      user = await User.findOne({ qrCode: qrCodeData });
-    }
+    // Recherche de l'utilisateur
+    const user = await User.findOne(
+      pinCode ? { pinCode: pinCode.toUpperCase() } : { qrCode: qrCodeData }
+    ).select('_id pinCode qrCode');
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        error: "Code PIN ou QR Code invalide ou expiré."
+        error: "Code invalide ou expiré."
       });
     }
 
-    // 2. Vérifier si déjà pointé aujourd'hui pour *cet* utilisateur
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Set to start of current day
-
-    const existingAttendance = await Attendance.findOne({
-      userId: user._id,
-      date: { $gte: todayStart } // Find attendance for THIS user starting from today
-    });
-
-    if (existingAttendance) {
-      // If checkOut exists, they completed their day
-      if (existingAttendance.checkOut) {
-        return res.status(400).json({
-          success: false,
-          error: "Pointage complet pour aujourd'hui. Vous avez déjà pointé entrée et sortie."
-        });
-      } else {
-        // If checkOut does not exist, they have already checked in
-        return res.status(400).json({
-          success: false,
-          error: "Vous avez déjà pointé votre entrée ce matin."
-        });
-      }
+    // Vérification des congés
+    const { onLeave } = await checkLeaveStatus(user._id);
+    if (onLeave) {
+      return res.status(400).json({
+        success: false,
+        error: "Vous êtes en congé aujourd'hui."
+      });
     }
 
-    // 3. Enregistrer le pointage d'entrée
+    // Vérification des pointages existants
+    const todayStart = moment().tz(TIMEZONE).startOf('day').toDate();
+    const existing = await Attendance.findOne({
+      userId: user._id,
+      date: { $gte: todayStart }
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        error: existing.checkOut 
+          ? "Pointage complet pour aujourd'hui."
+          : "Vous avez déjà pointé votre entrée."
+      });
+    }
+
+    // Création du pointage
     const attendance = await Attendance.create({
       userId: user._id,
-      date: new Date(),
-      checkIn: new Date(),
+      date: moment().tz(TIMEZONE).toDate(),
+      checkIn: moment().tz(TIMEZONE).toDate(),
       status: calculateStatus()
     });
 
-    // *** IMPORTANT CHANGE HERE ***
-    // DO NOT generate a new PIN or update user.pinCode after check-in.
-    // The same PIN needs to be valid for check-out.
-    // The PIN will only be invalidated AFTER successful check-out.
-    // const newPin = crypto.randomBytes(3).toString('hex').toUpperCase();
-    // user.pinCode = newPin;
-    // await user.save();
-
     res.status(201).json({
       success: true,
-      message: "Pointage d'entrée enregistré avec succès !",
+      message: "Entrée enregistrée !",
       data: attendance
     });
 
   } catch (error) {
-    console.error("Erreur handleCheckIn:", error);
+    console.error("Erreur check-in:", error);
     res.status(500).json({
       success: false,
-      error: "Erreur serveur lors du pointage d'entrée."
+      error: "Erreur serveur"
     });
   }
 };

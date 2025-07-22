@@ -1,28 +1,61 @@
 const LeaveRequest = require('../Model/leaveRequestModel');
 const User = require('../Model/User');
+const Notification = require('../Model/Notification');
 
-// Employé crée une demande
 exports.createLeaveRequest = async (req, res) => {
   try {
     const { type, reason, startDate, endDate } = req.body;
 
-    if (!type || !startDate || !endDate) {
-      return res.status(400).json({ message: 'Données incomplètes.' });
+    // 🔒 Vérifie la présence d’un justificatif si nécessaire
+    if ((type === 'Maladie' || type === 'Parental') && !req.file) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Un justificatif est requis pour ce type de congé.',
+      });
     }
 
+    // 📝 Créer la demande de congé
     const leave = await LeaveRequest.create({
-      employee: req.user.id,
+      employee: req.user._id,
       type,
       reason,
       startDate,
-      endDate
+      endDate,
+      justificatifUrl: req.file ? req.file.path : undefined,
     });
 
-    res.status(201).json({ status: 'success', data: leave });
-  } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    // 📢 Trouver tous les RH et Admins
+    const receveurs = await User.find({ role: { $in: ["rh", "admin"] } });
+
+    // 🔔 Créer une notification pour chaque RH/Admin
+    const notifications = receveurs.map(user => ({
+      destinataire: user._id,
+      type: "demande",
+      message: `Nouvelle demande de congé de ${req.user.name}`,
+      leaveRequest: leave._id
+    }));
+
+    await Notification.insertMany(notifications);
+
+    // ✅ Réponse au frontend
+    return res.status(201).json({
+      status: 'success',
+      message: 'Demande de congé envoyée et notifications envoyées.',
+      data: leave,
+    });
+
+  } catch (error) {
+    console.error("[createLeave] Error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        status: 'error',
+        message: "Erreur lors de la création de la demande de congé.",
+        error: error.message,
+      });
+    }
   }
 };
+
 
 // RH ou admin traite une demande
 exports.updateLeaveStatus = async (req, res) => {

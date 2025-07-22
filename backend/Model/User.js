@@ -54,7 +54,12 @@ const userSchema = new mongoose.Schema({
   // === Sécurité ===
   passwordChangedAt: Date,
   passwordResetToken: String,
-  passwordResetExpires: Date
+  passwordResetExpires: Date,
+
+  departement: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Departement"
+},
 
 }, {
   timestamps: true,

@@ -55,20 +55,27 @@ exports.getUserById = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    res.status(202).json({
+    const updateData = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
       status: "success",
-      data: { updatedUser },
+      message: "Employé mis à jour avec succès",
+      data: updatedUser
     });
   } catch (err) {
     res.status(400).json({
       status: "fail",
-      message: err,
+      message: err.message,
     });
   }
 };
+
 
 // Delete User
 
@@ -77,14 +84,16 @@ exports.deleteUser = async (req, res) => {
     await User.findByIdAndDelete(req.params.id);
     res.status(203).json({
       status: "success",
+      message: "Employé supprimé avec succès"
     });
   } catch (err) {
     res.status(400).json({
       status: "fail",
-      message: err,
+      message: err.message,
     });
   }
 };
+
 
 // Récupérer les infos du profil connecté
 exports.getMe = async (req, res) => {
@@ -212,7 +221,8 @@ exports.addEmploye = async (req, res) => {
       name,
       email,
       password: randomPassword,
-      role: 'employe'
+      role: 'employe',
+      departement 
     });
 
     res.status(201).json({
@@ -223,7 +233,8 @@ exports.addEmploye = async (req, res) => {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
-          role: newUser.role
+          role: newUser.role,
+          departement: newUser.departement
         },
         motDePasseInitial: randomPassword
       }

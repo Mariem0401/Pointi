@@ -15,6 +15,8 @@ const userRoutes = require('./Routes/UserRoutes');
 const attendanceRoutes =require('./Routes/attendanceRoutes');
 const contractRoutes=require('./Routes/contractRoutes');
 const leave=require('./Routes/leaveRoutes');
+const notif =require('./Routes/notifcationRoutes')
+const salaire = require('./Routes/SalaireRoutes')
 
 
 server.use('/users', userRoutes);
@@ -22,6 +24,8 @@ server.use('/attendance', attendanceRoutes);
 server.use('/departement',departementRoutes);
 server.use('/contract',contractRoutes);
 server.use('/leave',leave);
+server.use('/notif',notif);
+server.use('/salaire',salaire);
 
 mongoose
   .connect(databaseUrl)

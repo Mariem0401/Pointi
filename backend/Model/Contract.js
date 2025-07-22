@@ -56,7 +56,7 @@ const contractSchema = new mongoose.Schema({
     required: true,
     min: [0, 'Le salaire ne peut pas être négatif']
   },
-  pdfPath: {
+  pdfUrl: {
     type: String
   },
   status: {
