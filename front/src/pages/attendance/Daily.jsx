@@ -31,7 +31,7 @@ export default function DailyAttendance() {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`http://localhost:7777/api/attendance/daily`, {
+        const response = await axios.get(`http://localhost:7777/attendance/daily`, {
           params: { date },
           headers: {
             'Content-Type': 'application/json'
