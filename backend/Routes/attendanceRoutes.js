@@ -1,11 +1,13 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 const attendanceController = require('../Controller/attendanceController');
 
-// Route pour le check-in (avec authentification requise)
 router.post('/checkin', attendanceController.handleCheckIn);
+router.post('/checkout', attendanceController.handleCheckOut);
+router.get('/daily', attendanceController.getDailyAttendance);
+router.get('/user/:userId', attendanceController.getAttendanceByUser);
+router.get('/all', attendanceController.getAllAttendance);
+router.get('/monthly', attendanceController.getMonthlyAttendance); // cette ligne est essentielle
+router.get('/monthly-summary', attendanceController.getMonthlySummary); // <-- à ajouter
 
-// Route pour le check-out (avec authentification requise)
-router.post('/checkout',  attendanceController.handleCheckOut);
-
-module.exports = router; // Export correct du routeur
+module.exports = router;
