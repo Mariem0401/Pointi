@@ -205,7 +205,7 @@ exports.getUserWithContracts = async (req, res) => {
 
 exports.addEmploye = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, departement, phone, adresse } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({
@@ -214,7 +214,7 @@ exports.addEmploye = async (req, res) => {
       });
     }
 
-    // Mot de passe simple généré (ex: employe2025 + 3 chiffres aléatoires)
+    // Génération d’un mot de passe temporaire simple
     const randomPassword = 'employe' + Math.floor(100 + Math.random() * 900);
 
     const newUser = await User.create({
@@ -222,7 +222,9 @@ exports.addEmploye = async (req, res) => {
       email,
       password: randomPassword,
       role: 'employe',
-      departement 
+      departement,
+      phone,
+      adresse
     });
 
     res.status(201).json({
@@ -234,7 +236,9 @@ exports.addEmploye = async (req, res) => {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
-          departement: newUser.departement
+          departement: newUser.departement,
+          phone: newUser.phone,
+          adresse: newUser.adresse
         },
         motDePasseInitial: randomPassword
       }

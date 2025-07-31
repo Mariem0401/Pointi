@@ -1,63 +1,52 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
+const server = express(); /* l'app est une instance d'express */
+const CodeController = require('./Controller/codeController');
 const mongoose = require('mongoose');
 const { port, databaseUrl } = require('./config');
 
-const app = express();
+server.use(express.json());
 
-// Origines autorisées (tu peux ajouter d'autres si besoin)
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+server.listen(port, () => {
+  console.log(`App is running on port ${port}...`);
+});
+const departementRoutes = require("./Routes/departementRoutes");
+const userRoutes = require('./Routes/UserRoutes');
+const attendanceRoutes =require('./Routes/attendanceRoutes');
+const contractRoutes=require('./Routes/contractRoutes');
+const leave=require('./Routes/leaveRoutes');
+const notif =require('./Routes/notifcationRoutes')
+const salaire = require('./Routes/SalaireRoutes')
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // Permet les requêtes sans origin (ex: Postman, curl)
-    if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'La politique CORS ne permet pas l\'accès depuis cette origine : ' + origin;
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true  // Important si tu utilises withCredentials côté client
-}));
+server.use('/users', userRoutes);
+server.use('/attendance', attendanceRoutes);
+server.use('/departement',departementRoutes);
+server.use('/contract',contractRoutes);
+server.use('/leave',leave);
+server.use('/notif',notif);
+server.use('/salaire',salaire);
 
-app.use(express.json());
-
-// Routes
-const apiRoutes = express.Router();
-app.use('/api', apiRoutes);
-
-apiRoutes.use('/users', require('./Routes/UserRoutes'));
-apiRoutes.use('/attendance', require('./Routes/attendanceRoutes'));
-apiRoutes.use('/departments', require('./Routes/departementRoutes'));
-apiRoutes.use('/contracts', require('./Routes/contractRoutes'));
-apiRoutes.use('/leaves', require('./Routes/leaveRoutes'));
-apiRoutes.use('/notifications', require('./Routes/notifcationRoutes'));
-apiRoutes.use('/salaries', require('./Routes/SalaireRoutes'));
-
-// Connexion DB et démarrage serveur
-mongoose.connect(databaseUrl)
-  .then(() => {
+mongoose
+  .connect(databaseUrl)
+  .then((connection) => { //sirine ya je7cha ya 7mara  ya bhimaaa
     console.log('DB connected successfully');
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-
-      // Jobs planifiés
-      require('./jobs/dailyCodeJob').start();
-      require('./jobs/cleanCodeLogsJob').start();
-    });
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('DB connection error:', err);
-    process.exit(1);
   });
 
-// Gestion des erreurs centralisée
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, error: 'Internal Server Error' });
-});
+async function testEmailSending() {
+  console.log(`[TEST] Sending emails at ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}...`);
+  try {
+    const results = await CodeController.sendDailyCodes();
+    console.log('[SUCCESS] Email sending results:', results);
+  } catch (error) {
+    console.error('[ERROR] Failed to send emails:', error);
+  }
+}
+
+// Call the function immediately
+//testEmailSending();
+require('./jobs/dailyCodeJob').start();
+require('./jobs/cleanCodeLogsJob').start();

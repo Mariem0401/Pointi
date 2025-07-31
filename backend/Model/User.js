@@ -60,6 +60,20 @@ const userSchema = new mongoose.Schema({
   type: mongoose.Schema.Types.ObjectId,
   ref: "Departement"
 },
+phone: {
+  type: String,
+  trim: true,
+  validate: {
+    validator: function (val) {
+      return validator.isMobilePhone(val, 'any');
+    },
+    message: 'Numéro de téléphone invalide'
+  }
+},
+adresse: {
+  type: String,
+  trim: true
+},
 
 }, {
   timestamps: true,

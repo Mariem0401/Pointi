@@ -5,6 +5,13 @@ const Departement = require("../Model/Departement"); // Make sure this path is c
 // Create a department
 exports.createDepartement = async (req, res) => {
   try {
+    if (req.body.responsable) {
+      const user = await User.findById(req.body.responsable);
+      if (user) {
+        req.body.emailResponsable = user.email;
+      }
+    }
+
     const departement = await Departement.create(req.body);
     res.status(201).json({ status: "success", data: departement });
   } catch (err) {
@@ -31,3 +38,29 @@ exports.deleteDepartement = async (req, res) => {
     res.status(400).json({ status: "fail", message: err.message });
   }
 };
+// Update a department
+exports.updateDepartement = async (req, res) => {
+  try {
+    if (req.body.responsable) {
+      const user = await User.findById(req.body.responsable);
+      if (user) {
+        req.body.emailResponsable = user.email;
+      }
+    }
+
+    const departement = await Departement.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!departement) {
+      return res.status(404).json({ status: "fail", message: "Département introuvable" });
+    }
+
+    res.status(200).json({ status: "success", data: departement });
+  } catch (err) {
+    res.status(400).json({ status: "fail", message: err.message });
+  }
+};
+
