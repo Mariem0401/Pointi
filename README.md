@@ -1,54 +1,46 @@
-📘 HR Management & Time Tracking — MERN Application
-📌 Overview
+# HR Management & Time Tracking — MERN Application
 
-This project is a Human Resources Management Web Application built using the MERN stack (MongoDB, Express.js, React.js, Node.js).
-It was developed as part of a summer internship to automate HR processes, including:
+## 📌 Overview
+This project is a Human Resources Management Web Application built using the MERN stack (MongoDB, Express.js, React.js, Node.js).  
+It was developed as part of a summer internship to automate HR processes such as:
 
-Employee attendance (pointage) tracking
+- Employee attendance (pointage) tracking  
+- Leave/holiday management  
+- Salary calculation  
+- Employee profile management  
+- Admin dashboard & statistics  
 
-Leave/holiday management
+The system aims to offer a modern and efficient interface for both employees and HR managers.
 
-Salary calculation
+---
 
-Employee profile management
+## 🚀 Features
 
-Admin dashboard & statistics
+### 👨‍💼 Employee Features
+- Clock-in / Clock-out system  
+- Submit leave requests  
+- View leave balance & request history  
+- Update personal profile  
 
-The goal is to offer a modern, intuitive, and efficient interface for employees and HR managers.
+### 🧑‍💼 Admin (HR) Features
+- Manage employees  
+- Validate or reject leave requests  
+- Manage departments & roles  
+- View attendance statistics  
+- Generate reports  
 
-🚀 Features
-👥 Employee Features
+---
 
-Clock-in / Clock-out system
+## 🛠️ Tech Stack
 
-Submit leave requests
+| Layer | Technology |
+|-------|------------|
+| Frontend | React.js |
+| Backend | Node.js, Express.js |
+| Database | MongoDB |
+| Auth | JWT |
+| UI | Material UI / Tailwind (selon ton projet) |
 
-View leave balance & request history
+---
 
-Display personal information & update profile
-
-🧑‍💼 Admin (HR) Features
-
-Manage employees
-
-Validate or reject leave requests
-
-Manage departments & roles
-
-Generate attendance reports
-
-Automatic salary calculation based on:
-
-Working hours
-
-Leave balance
-
-Absences or delays
-
-🖥️ UI/UX
-
-Responsive interface
-
-Modern dashboard
-
-Clean charts & statistics
+## 📂 Project Structure
