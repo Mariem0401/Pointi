@@ -43,4 +43,3 @@ The system aims to offer a modern and efficient interface for both employees and
 
 ---
 
-## 📂 Project Structure
